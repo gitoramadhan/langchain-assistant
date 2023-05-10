@@ -5,6 +5,7 @@ import os
 import openai
 from chat_handler import process_chat_message
 
+
 def transcribe_audio(audio_filepath: str) -> str:
     """
     Transcribe an audio file using OpenAI's Whisper ASR API.
@@ -18,6 +19,7 @@ def transcribe_audio(audio_filepath: str) -> str:
     with open(audio_filepath, "rb") as audio:
         transcript = openai.Audio.transcribe("whisper-1", audio)
         return transcript["text"]
+
 
 async def handle_voice_message(audio_filepath: str, chat_id: int) -> str:
     """
@@ -35,6 +37,7 @@ async def handle_voice_message(audio_filepath: str, chat_id: int) -> str:
     print("transcribed text: " + transcribed_text)
     output = await process_chat_message(transcribed_text, chat_id)
     return output
+
 
 async def process_voice_message(voice_url: str, chat_id: int) -> str:
     """

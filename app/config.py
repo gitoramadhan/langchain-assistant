@@ -23,7 +23,7 @@ ZAPIER_NLA_API_KEY = os.getenv('ZAPIER_NLA_API_KEY', None)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Choose your model between gpt-3, gpt-3.5-turbo, gpt-4
-SELECTED_MODEL = 'gpt-4'
+SELECTED_MODEL = 'gpt-3.5-turbo'
 
 # Temperature value for OpenAI language model
 TEMPERATURE_VALUE = float(0.8)

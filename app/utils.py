@@ -8,17 +8,24 @@ from langchain import OpenAI, LLMChain, PromptTemplate
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory, ConversationBufferMemory
 from langchain.agents.agent_toolkits import ZapierToolkit
 from langchain.utilities.zapier import ZapierNLAWrapper
-from langchain.agents import initialize_agent
+from langchain.agents import initialize_agent, LLMSingleActionAgent
 from langchain.docstore import InMemoryDocstore
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.tools import DuckDuckGoSearchRun
 from langchain.memory import VectorStoreRetrieverMemory, CombinedMemory
 from langchain.chat_models import ChatOpenAI
 from config import SELECTED_MODEL, IMAGE_SIZE, ZAPIER_NLA_API_KEY, BOT_NAME
 from models import initialize_language_model
 from templates import get_template
-
-
+from langchain.agents import Tool, AgentExecutor, LLMSingleActionAgent, AgentOutputParser
+from langchain.prompts import BaseChatPromptTemplate
+from langchain import SerpAPIWrapper, LLMChain
+from langchain.chat_models import ChatOpenAI
+from typing import List, Union
+from langchain.schema import AgentAction, AgentFinish, HumanMessage
+from langchain.agents import AgentType
+import re
 
 if ZAPIER_NLA_API_KEY:
     llm = OpenAI(temperature=0)
@@ -32,11 +39,11 @@ else:
 
 
 def load_memory(chat_id: str):
-    '''Loads memory for langchain chain 
-    It is a combination of two types of memory - first: Faiss based memory and 
+    '''Loads memory for langchain chain
+    It is a combination of two types of memory - first: Faiss based memory and
     second: recent K interaction memory. Faiss baised memory retrieves top P related
     memory to the curent input. This has the benefit of being able to retrieve contextual
-    memory that is burried deep in the conversation history, but also being highly 
+    memory that is burried deep in the conversation history, but also being highly
     relevant to the latest interactions.
 
     Args:
@@ -58,7 +65,7 @@ def load_memory(chat_id: str):
 
     # Create new memory
     memconfig = config.MEMORYCONFIG
-    embedding_size = 1536 # Dimensions of the OpenAIEmbeddings
+    embedding_size = 1536  # Dimensions of the OpenAIEmbeddings
     index = faiss.IndexFlatL2(embedding_size)
     embedding_fn = OpenAIEmbeddings(openai_api_key=config.OPENAI_API_KEY).embed_query
     vectorstore = FAISS(embedding_fn, index, InMemoryDocstore({}), {})
@@ -67,7 +74,7 @@ def load_memory(chat_id: str):
     conv_memory = ConversationBufferWindowMemory(
         memory_key="recent_history",
         input_key="human_input",
-        k=memconfig["K_latest"], # Number of latest interactions to keep in memory
+        k=memconfig["K_latest"],  # Number of latest interactions to keep in memory
     )
 
     faissmemory = VectorStoreRetrieverMemory(retriever=retriever)
@@ -87,7 +94,7 @@ def load_chat_model(chat_id: str):
     Returns:
         langchain chain for chat
     '''
-    print ('Loading chat model...')
+    print('Loading chat model...')
     prompt_template = get_template("chat")
     prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
     memory = load_memory(chat_id)
@@ -103,7 +110,7 @@ def save_memory_to_disk(chat_id, chatgpt_chain):
     ''' Saves the memory of the langchain chain to disk '''
     # TODO memory is currently serialized and saved at every step
     # It's probably better to do it on exit or on every 10 steps etc.
-    
+
     if not os.path.exists(config.HISTORY_DIR):
         os.makedirs(config.HISTORY_DIR)
     fp = os.path.join(config.HISTORY_DIR, '{}_memory.p'.format(chat_id))
@@ -135,7 +142,30 @@ async def get_topic(text: str, history_string: str) -> str:
 
     return topic
 
-def process_chat(chat_id:str, text: str, history_string: str) -> str:
+
+class CustomOutputParser(AgentOutputParser):
+
+    def parse(self, llm_output: str) -> Union[AgentAction, AgentFinish]:
+        # Check if agent should finish
+        if "Final Answer:" in llm_output:
+            return AgentFinish(
+                # Return values is generally always a dictionary with a single `output` key
+                # It is not recommended to try anything else at the moment :)
+                return_values={"output": llm_output.split("Final Answer:")[-1].strip()},
+                log=llm_output,
+            )
+        # Parse out the action and action input
+        regex = r"Action\s*\d*\s*:(.*?)\nAction\s*\d*\s*Input\s*\d*\s*:[\s]*(.*)"
+        match = re.search(regex, llm_output, re.DOTALL)
+        if not match:
+            raise ValueError(f"Could not parse LLM output: `{llm_output}`")
+        action = match.group(1).strip()
+        action_input = match.group(2)
+        # Return the action and action input
+        return AgentAction(tool=action, tool_input=action_input.strip(" ").strip('"'), log=llm_output)
+
+
+def process_chat(chat_id: str, text: str, history_string: str) -> str:
     """
     Process a chat message and generate a response.
 
@@ -148,10 +178,33 @@ def process_chat(chat_id:str, text: str, history_string: str) -> str:
         str: The generated response.
     """
 
+    # Define which tools the agent can use to answer user queries
+    search = DuckDuckGoSearchRun()
+    tools = [
+        Tool(
+            name="Search",
+            func=search.run,
+            description="useful for when you need to answer questions about current events"
+        )
+    ]
+
     chatgpt_chain = load_chat_model(chat_id)
-    output = chatgpt_chain.predict(human_input=text)
+    output_parser = CustomOutputParser()
+    tool_names = [tool.name for tool in tools]
+    agent_wh = LLMSingleActionAgent(
+        llm_chain=chatgpt_chain,
+        output_parser=output_parser,
+        stop=["\nObservation:"],
+        allowed_tools=tool_names
+    )
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    agent_chain = initialize_agent(tools, initialize_language_model(SELECTED_MODEL), agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, verbose=True,
+                                   memory=memory)
+    # output = chatgpt_chain.predict(human_input=text)
+    output = agent_chain.run(input=text, chat_history=history_string)
     save_memory_to_disk(chat_id, chatgpt_chain)
     return output
+
 
 async def process_image(text: str, history_string: str) -> str:
     """
@@ -192,6 +245,7 @@ async def process_image(text: str, history_string: str) -> str:
             output = ("image of " + prompt_text, image)
 
     return output
+
 
 def process_calendar(text: str, history_string: str) -> str:
     """

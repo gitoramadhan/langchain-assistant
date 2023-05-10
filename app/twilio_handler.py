@@ -10,6 +10,7 @@ from babyagi import process_task
 
 twilio_api_reply = APIRouter()
 
+
 async def send_twilio_response(chat_id: str, message: str, platform: str = "whatsapp", is_voice: bool = False):
     """
     Process an incoming chat or voice message and send a response using Twilio.
@@ -41,12 +42,12 @@ async def send_twilio_response(chat_id: str, message: str, platform: str = "what
         output = await process_voice_message(message, chat_id)
     elif BABYAGI and message.startswith("/task"):
         if BABYAGI:
-          # Process text messages
+            # Process text messages
             task = message[5:]
             await process_task(task, chat_id=chat_id, platform='twilio', client=None, base_url=None)
             output = task
     else:
-      output = await process_chat_message(message, chat_id)
+        output = await process_chat_message(message, chat_id)
 
     # Initialize Twilio response
     resp = MessagingResponse()
@@ -96,6 +97,7 @@ async def send_twilio_response(chat_id: str, message: str, platform: str = "what
                 to=chat_id
             )
 
+
 @twilio_api_reply.post("/api")
 async def handle_twilio_api_reply(request: Request, Body: str = Form(""), MediaUrl0: str = Form("")):
     form_data = await request.form()
@@ -119,4 +121,3 @@ async def handle_twilio_api_reply(request: Request, Body: str = Form(""), MediaU
     # Return an empty response to Twilio
     resp = MessagingResponse()
     return Response(content=str(resp), media_type="application/xml")
-

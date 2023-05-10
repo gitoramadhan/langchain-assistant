@@ -17,8 +17,9 @@ def get_template(template_type: str) -> str:
         - the user just wants to chat
         - he wants to get an image from you
         - he wants to put something in his calendar
+        - he wants to ask questions about a document
 
-        Return a single word: chat, image, calendar
+        Return a single word: chat, image, document, calendar
         Conversation history:{history}
         User message : {human_input}
         The user wants:
@@ -45,6 +46,16 @@ def get_template(template_type: str) -> str:
     elif template_type == "image":
         return """
         The user wants an image from you. You will get it from DALL-E / Stable Diffusion.
+        Based on the User message and history (if relevant) do you have information about what the image is about?
+        If so create an awesome prompt for DALL-E. It should create a prompt relevant to what the user is looking for. 
+        If it is not clear what the image should be about; return this exact message 'false'.
+        Conversation history:{history}
+        User message : {human_input}
+        Prompt for image:
+        """
+    elif template_type == "document":
+        return """
+        The user wants to ask questions about the document . You will get it from DALL-E / Stable Diffusion.
         Based on the User message and history (if relevant) do you have information about what the image is about?
         If so create an awesome prompt for DALL-E. It should create a prompt relevant to what the user is looking for. 
         If it is not clear what the image should be about; return this exact message 'false'.
