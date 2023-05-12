@@ -4,7 +4,7 @@ import pickle
 import config
 import openai
 import functools
-from langchain import OpenAI, LLMChain, PromptTemplate
+from langchain import OpenAI, LLMChain, PromptTemplate, GoogleSerperAPIWrapper
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory, ConversationBufferMemory
 from langchain.agents.agent_toolkits import ZapierToolkit
 from langchain.utilities.zapier import ZapierNLAWrapper
@@ -179,12 +179,12 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
     """
 
     # Define which tools the agent can use to answer user queries
-    search = DuckDuckGoSearchRun()
+    search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
     tools = [
         Tool(
-            name="Search",
+            name="Intermediate Answer",
             func=search.run,
-            description="useful for when you need to answer questions about current events"
+            description="useful for when you need to ask with search"
         )
     ]
 
@@ -198,7 +198,9 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
         allowed_tools=tool_names
     )
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    agent_chain = initialize_agent(tools, initialize_language_model(SELECTED_MODEL), agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, verbose=True,
+    agent_chain = initialize_agent(tools, initialize_language_model(SELECTED_MODEL),
+                                   agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+                                   verbose=True, max_iterations=2,
                                    memory=memory)
     # output = chatgpt_chain.predict(human_input=text)
     output = agent_chain.run(input=text, chat_history=history_string)
