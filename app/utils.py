@@ -194,12 +194,12 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
         allowed_tools=tool_names
     )
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    agent_chain = initialize_agent(tools, initialize_language_model(SELECTED_MODEL),
+    agent_chain = initialize_agent(tools=get_tools(), llm=initialize_language_model(SELECTED_MODEL),
                                    agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
                                    verbose=True, max_iterations=2,
                                    memory=memory)
     # output = chatgpt_chain.predict(human_input=text)
-    agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=tools, verbose=True)
+    agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=get_tools(), verbose=True)
     output = agent_chain.run(input=text, chat_history=history_string)
     save_memory_to_disk(chat_id, chatgpt_chain)
     return output
@@ -287,7 +287,7 @@ def get_tools() -> List:
         name="Search",
         func=search.run,
         description="useful for when you need to answer questions about current events"
-    ), browser]
+    )]
     return tools
 
 
