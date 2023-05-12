@@ -101,7 +101,7 @@ def load_chat_model(chat_id: str):
         langchain chain for chat
     '''
     print('Loading chat model...')
-    prompt_template = get_template(template_type="chat")
+    prompt_template = get_template(template_type="chat",tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
     memory = load_memory(chat_id)
     return LLMChain(
@@ -135,7 +135,7 @@ async def get_topic(text: str, history_string: str) -> str:
     Returns:
         str: The detected topic.
     """
-    prompt_template = get_template("topic")
+    prompt_template = get_template(template_type="topic",tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(
@@ -216,7 +216,7 @@ async def process_image(text: str, history_string: str) -> str:
     Returns:
         str: The generated response.
     """
-    prompt_template = get_template("image")
+    prompt_template = get_template(template_type="image",tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(
@@ -260,7 +260,7 @@ def process_calendar(text: str, history_string: str) -> str:
     if agent is None:
         return f"{BOT_NAME}: I'm sorry, but I cannot access your calendar without proper configuration. Please configure the Zapier API key to enable calendar integration."
 
-    prompt_template = get_template("calendar")
+    prompt_template = get_template(template_type="calendar",tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(

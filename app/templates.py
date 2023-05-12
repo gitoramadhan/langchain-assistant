@@ -1,10 +1,7 @@
-from utils import get_tools
 from config import BOT_NAME
 
-tool_names = [tool.name for tool in get_tools()]
 
-tools = get_tools()
-def get_template(template_type: str) -> str:
+def get_template(template_type: str, tools: list) -> str:
     """
     Return a prompt template based on the template type.
 
