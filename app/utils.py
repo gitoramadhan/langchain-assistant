@@ -186,7 +186,7 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
 
     chatgpt_chain = load_chat_model(chat_id)
     output_parser = CustomOutputParser()
-    tool_names = [tool.name for tool in tools]
+    tool_names = [tool.name for tool in get_tools()]
     agent_wh = LLMSingleActionAgent(
         llm_chain=chatgpt_chain,
         output_parser=output_parser,
@@ -276,17 +276,19 @@ def process_calendar(text: str, history_string: str) -> str:
     return output
 
 
-async_browser = create_async_playwright_browser()
-toolkit = PlayWrightBrowserToolkit.from_browser(async_browser=async_browser)
-browser = toolkit.get_tools()
+def get_tools() -> List:
+    async_browser = create_async_playwright_browser()
+    toolkit = PlayWrightBrowserToolkit.from_browser(async_browser=async_browser)
+    browser = toolkit.get_tools()
 
-# Define which tools the agent can use to answer user queries
-search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
-tools = [Tool(
-    name="Search",
-    func=search.run,
-    description="useful for when you need to answer questions about current events"
-), browser]
+    # Define which tools the agent can use to answer user queries
+    search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
+    tools = [Tool(
+        name="Search",
+        func=search.run,
+        description="useful for when you need to answer questions about current events"
+    ), browser]
+    return tools
 
 
 class CustomPromptTemplate(StringPromptTemplate):
@@ -305,5 +307,3 @@ class CustomPromptTemplate(StringPromptTemplate):
         kwargs["tools"] = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
         kwargs["tool_names"] = ", ".join([tool.name for tool in self.tools])
         return self.template.format(**kwargs)
-
-
