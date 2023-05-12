@@ -19,13 +19,19 @@ from config import SELECTED_MODEL, IMAGE_SIZE, ZAPIER_NLA_API_KEY, BOT_NAME
 from models import initialize_language_model
 from templates import get_template
 from langchain.agents import Tool, AgentExecutor, LLMSingleActionAgent, AgentOutputParser
-from langchain.prompts import BaseChatPromptTemplate
+from langchain.prompts import BaseChatPromptTemplate, StringPromptTemplate
 from langchain import SerpAPIWrapper, LLMChain
 from langchain.chat_models import ChatOpenAI
 from typing import List, Union
 from langchain.schema import AgentAction, AgentFinish, HumanMessage
 from langchain.agents import AgentType
 import re
+
+from langchain.agents.agent_toolkits import PlayWrightBrowserToolkit
+from langchain.tools.playwright.utils import (
+    create_async_playwright_browser,
+    create_sync_playwright_browser,  # A synchronous browser is available, though it isn't compatible with jupyter.
+)
 
 if ZAPIER_NLA_API_KEY:
     llm = OpenAI(temperature=0)
@@ -95,7 +101,7 @@ def load_chat_model(chat_id: str):
         langchain chain for chat
     '''
     print('Loading chat model...')
-    prompt_template = get_template("chat")
+    prompt_template = get_template(template_type="chat")
     prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
     memory = load_memory(chat_id)
     return LLMChain(
@@ -178,16 +184,6 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
         str: The generated response.
     """
 
-    # Define which tools the agent can use to answer user queries
-    search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
-    tools = [
-        Tool(
-            name="Intermediate Answer",
-            func=search.run,
-            description="useful for when you need to ask with search"
-        )
-    ]
-
     chatgpt_chain = load_chat_model(chat_id)
     output_parser = CustomOutputParser()
     tool_names = [tool.name for tool in tools]
@@ -199,10 +195,11 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
     )
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     agent_chain = initialize_agent(tools, initialize_language_model(SELECTED_MODEL),
-                                   agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+                                   agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
                                    verbose=True, max_iterations=2,
                                    memory=memory)
     # output = chatgpt_chain.predict(human_input=text)
+    agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=tools, verbose=True)
     output = agent_chain.run(input=text, chat_history=history_string)
     save_memory_to_disk(chat_id, chatgpt_chain)
     return output
@@ -277,3 +274,36 @@ def process_calendar(text: str, history_string: str) -> str:
     output = agent.run(prompt_calendar)
 
     return output
+
+
+async_browser = create_async_playwright_browser()
+toolkit = PlayWrightBrowserToolkit.from_browser(async_browser=async_browser)
+browser = toolkit.get_tools()
+
+# Define which tools the agent can use to answer user queries
+search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
+tools = [Tool(
+    name="Search",
+    func=search.run,
+    description="useful for when you need to answer questions about current events"
+), browser]
+
+
+class CustomPromptTemplate(StringPromptTemplate):
+    template: str
+    tools: List[Tool]
+
+    def format(self, **kwargs) -> str:
+        intermediate_steps = kwargs.pop("intermediate_steps")
+        thoughts = ""
+
+        for action, observation in intermediate_steps:
+            thoughts += action.log
+            thoughts += f"\nObservation: {observation}\nThought: "
+
+        kwargs["agent_scratchpad"] = thoughts
+        kwargs["tools"] = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
+        kwargs["tool_names"] = ", ".join([tool.name for tool in self.tools])
+        return self.template.format(**kwargs)
+
+
