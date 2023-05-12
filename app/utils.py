@@ -277,9 +277,6 @@ def process_calendar(text: str, history_string: str) -> str:
 
 
 def get_tools() -> List:
-    async_browser = create_async_playwright_browser()
-    toolkit = PlayWrightBrowserToolkit.from_browser(async_browser=async_browser)
-    browser = toolkit.get_tools()
 
     # Define which tools the agent can use to answer user queries
     search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
