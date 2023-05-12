@@ -6,11 +6,13 @@ def get_template(template_type: str, tools: list) -> str:
     Return a prompt template based on the template type.
 
     Args:
+        tools:
         template_type (str): The type of template to return.
 
     Returns:
         str: The prompt template.
     """
+    tool_names = [tool.name for tool in tools]
     if template_type == "topic":
         return """
         You're going to help a chatbot decide on what next action to take.
@@ -80,6 +82,37 @@ def get_template(template_type: str, tools: list) -> str:
         Human: {{human_input}}
         {BOT_NAME} AI response:
         """
+    elif template_type == "chat2":
+        return f"""
+        I want you to be FritzAgent. An agent that use tools to get answers. You are reliable and trustworthy. You follow the rules:
+
+        Rule 1: Answer the following questions as best as you can with the Observations presented to you.
+        Rule 2: Never use information outside of the Observations presented to you.
+        Rule 3: Never jump to conclusions unless the information for the final answer is explicitly presented to you in Observation.
+        
+        You have access to the following tools:
+        
+        {tools}
+        
+        Use the following format:
+        
+        Question: the input question you must answer
+        Thought: you should always think about what to do
+        Action: the action to take, should be one of [{tool_names}]
+        Action Input: the input to the action
+        Observation: the result of the action
+        Thought: you should always think about what to do next. Use the Observation to gather extra information, but never use information outside of the Observation.
+        Action: the action to take, should be one of [{tool_names}]
+        Action_input: the input to the action
+        Observation: the result of the action
+        ... (this Thought/Action/Action Input/Observation can repeat N times)
+        Thought: I now know the final answer.
+        Final Answer: the final answer to the original input question
+        
+        Begin!
+        
+        Question: {{human_input}}
+        {{agent_scratchpad}}"""
 
     elif template_type == "image":
         return """
@@ -120,3 +153,4 @@ def get_template(template_type: str, tools: list) -> str:
 
     else:
         raise ValueError(f"Invalid template type: {template_type}")
+

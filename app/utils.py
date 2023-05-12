@@ -101,8 +101,10 @@ def load_chat_model(chat_id: str):
         langchain chain for chat
     '''
     print('Loading chat model...')
-    prompt_template = get_template(template_type="chat",tools=get_tools())
-    prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
+    prompt_template = get_template(template_type="chat", tools=get_tools())
+    prompt = CustomPromptTemplate(tempalte=prompt_template, tools=get_tools(),
+                                  input_variables=["intermediate_steps", "history", "recent_history", "human_input"])
+    # prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
     memory = load_memory(chat_id)
     return LLMChain(
         llm=initialize_language_model(SELECTED_MODEL),
@@ -135,7 +137,7 @@ async def get_topic(text: str, history_string: str) -> str:
     Returns:
         str: The detected topic.
     """
-    prompt_template = get_template(template_type="topic",tools=get_tools())
+    prompt_template = get_template(template_type="topic", tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(
@@ -200,7 +202,8 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
                                    memory=memory)
     # output = chatgpt_chain.predict(human_input=text)
     agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=get_tools(), verbose=True)
-    output = agent_chain.run(input=text, chat_history=history_string)
+    # output = agent_chain.run(input=text, chat_history=history_string)
+    output = agent_executor.run(input=text, chat_history=history_string)
     save_memory_to_disk(chat_id, chatgpt_chain)
     return output
 
@@ -216,7 +219,7 @@ async def process_image(text: str, history_string: str) -> str:
     Returns:
         str: The generated response.
     """
-    prompt_template = get_template(template_type="image",tools=get_tools())
+    prompt_template = get_template(template_type="image", tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(
@@ -260,7 +263,7 @@ def process_calendar(text: str, history_string: str) -> str:
     if agent is None:
         return f"{BOT_NAME}: I'm sorry, but I cannot access your calendar without proper configuration. Please configure the Zapier API key to enable calendar integration."
 
-    prompt_template = get_template(template_type="calendar",tools=get_tools())
+    prompt_template = get_template(template_type="calendar", tools=get_tools())
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(
@@ -277,7 +280,6 @@ def process_calendar(text: str, history_string: str) -> str:
 
 
 def get_tools() -> List:
-
     # Define which tools the agent can use to answer user queries
     search = GoogleSerperAPIWrapper(serper_api_key=config.SERPER_API_KEY)
     tools = [Tool(
