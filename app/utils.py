@@ -102,9 +102,9 @@ def load_chat_model(chat_id: str):
     '''
     print('Loading chat model...')
     prompt_template = get_template(template_type="chat", tools=get_tools())
-    prompt = CustomPromptTemplate(tempalte=prompt_template, tools=get_tools(),
-                                  input_variables=["intermediate_steps", "history", "recent_history", "human_input"])
-    # prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
+    # prompt = CustomPromptTemplate(template=prompt_template, tools=get_tools(), input_variables=[
+    # "intermediate_steps", "history", "recent_history", "human_input"])
+    prompt = PromptTemplate(input_variables=["history", "recent_history", "human_input"], template=prompt_template)
     memory = load_memory(chat_id)
     return LLMChain(
         llm=initialize_language_model(SELECTED_MODEL),
@@ -201,9 +201,9 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
                                    verbose=True, max_iterations=2,
                                    memory=memory)
     # output = chatgpt_chain.predict(human_input=text)
-    agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=get_tools(), verbose=True)
-    # output = agent_chain.run(input=text, chat_history=history_string)
-    output = agent_executor.run(input=text, chat_history=history_string)
+    # agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=get_tools(), verbose=True)
+    output = agent_chain.run(input=text, chat_history=history_string)
+    # output = agent_executor.run(human_input=text, chat_history=history_string)
     save_memory_to_disk(chat_id, chatgpt_chain)
     return output
 
