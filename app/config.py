@@ -35,7 +35,7 @@ TEMPERATURE_VALUE = float(0.8)
 IMAGE_SIZE = "256x256"
 
 # Chatbot name for generating responses
-BOT_NAME = 'Lago'
+BOT_NAME = 'VisionAI'
 
 # Use BabyAGI or not?
 BABYAGI = False

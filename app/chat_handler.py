@@ -2,7 +2,7 @@ from typing import Dict, Union, Tuple
 from models import initialize_language_model
 from templates import get_template
 from config import SELECTED_MODEL
-from utils import get_topic, process_chat, process_image, process_calendar
+from utils import get_topic, process_chat, process_image, process_calendar, process_search
 
 # Initialize a dictionary to keep track of the last message for each user
 last_messages: Dict[int, str] = {}
@@ -23,14 +23,19 @@ async def process_chat_message(text: str, chat_id: int) -> Union[str, Tuple[str,
     # Determine the topic
     topic = await get_topic(text, history_string)
 
+    print(f'Topic {topic}')
     # Process the message based on the topic
     output = ""
     if topic == "chat":
         output = process_chat(chat_id, text, history_string)
+    elif topic == "search":
+        output = process_search(chat_id, text, history_string)
     elif topic == "image":
         output = await process_image(text, history_string)
     elif topic == "calendar":
         output = process_calendar(text, history_string)
+    elif topic == "document":
+        output = process_chat(chat_id, text, history_string)
 
     # Update the last messages for this user
     last_messages[chat_id] = [text] + last_3_messages[:-1]

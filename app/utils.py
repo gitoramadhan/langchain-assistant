@@ -138,6 +138,7 @@ async def get_topic(text: str, history_string: str) -> str:
         str: The detected topic.
     """
     prompt_template = get_template(template_type="topic", tools=get_tools())
+
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=prompt_template)
 
     chatgpt_chain = LLMChain(
@@ -197,13 +198,47 @@ def process_chat(chat_id: str, text: str, history_string: str) -> str:
     )
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     agent_chain = initialize_agent(tools=get_tools(), llm=initialize_language_model(SELECTED_MODEL),
-                                   agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
+                                   agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
                                    verbose=True, max_iterations=2,
                                    memory=memory)
     # output = chatgpt_chain.predict(human_input=text)
     # agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=get_tools(), verbose=True)
     output = agent_chain.run(input=text, chat_history=history_string)
     # output = agent_executor.run(human_input=text, chat_history=history_string)
+    save_memory_to_disk(chat_id, chatgpt_chain)
+    return output
+
+
+def process_search(chat_id: str, text: str, history_string: str) -> str:
+    """
+    Process a chat message whereby a search must be performed and generate a response.
+
+    Args:
+        chat_id(str): Chat id (used for caching)
+        text (str): Input text message.
+        history_string (str): Formatted conversation history string.
+
+    Returns:
+        str: The generated response.
+    """
+
+    chatgpt_chain = load_chat_model(chat_id)
+    output_parser = CustomOutputParser()
+    tool_names = [tool.name for tool in get_tools()]
+    agent_wh = LLMSingleActionAgent(
+        llm_chain=chatgpt_chain,
+        output_parser=output_parser,
+        stop=["\nObservation:"],
+        allowed_tools=tool_names
+    )
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    agent_chain = initialize_agent(tools=get_tools(), llm=initialize_language_model(SELECTED_MODEL),
+                                   agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+                                   verbose=True, max_iterations=2,
+                                   memory=memory)
+    # output = chatgpt_chain.predict(human_input=text)
+    # agent_executor = AgentExecutor.from_agent_and_tools(agent=agent_wh, tools=get_tools(), verbose=True)
+    output = agent_chain.run(input=text, chat_history=history_string)
     save_memory_to_disk(chat_id, chatgpt_chain)
     return output
 

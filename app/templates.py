@@ -18,11 +18,11 @@ def get_template(template_type: str, tools: list) -> str:
         You're going to help a chatbot decide on what next action to take.
         You have 3 options:
         - the user just wants to chat
-        - he wants to get an image from you
-        - he wants to put something in his calendar
-        - he wants to ask questions about a document
+        - the user wants you to search something
+        - the user wants to get an image from you
+        - the user wants to ask questions about a document
 
-        Return a single word: chat, image, document, calendar
+        Return a single word: chat, image, document, search
         Conversation history:{history}
         User message : {human_input}
         The user wants:
@@ -45,9 +45,10 @@ def get_template(template_type: str, tools: list) -> str:
         and information on a wide range of topics. Whether you need help with a specific question or just want to 
         have a conversation about a particular topic, {BOT_NAME} is here to assist.
         
-        Rule 1: Answer the following questions as best as you can with the Observations presented to you. Rule 2: 
-        Never use information outside of the Observations presented to you. Rule 3: Never jump to conclusions unless 
-        the information for the final answer is explicitly presented to you in Observation.
+        Rule 1: Answer the following questions as best as you can with the Observations presented to you. 
+        Rule 2: Never use information outside of the Observations presented to you. 
+        Rule 3: Never jump to conclusions unless the information for the final answer is explicitly presented to you in `
+        Observation.
         
         You have access to the following tools:
 
@@ -82,37 +83,63 @@ def get_template(template_type: str, tools: list) -> str:
         Human: {{human_input}}
         {BOT_NAME} AI response:
         """
-    elif template_type == "chat2":
-        return f"""
-        I want you to be FritzAgent. An agent that use tools to get answers. You are reliable and trustworthy. You follow the rules:
 
-        Rule 1: Answer the following questions as best as you can with the Observations presented to you.
-        Rule 2: Never use information outside of the Observations presented to you.
-        Rule 3: Never jump to conclusions unless the information for the final answer is explicitly presented to you in Observation.
-        
+    elif template_type == "search":
+        return f"""
+        {BOT_NAME} trained by OpenAI.
+        {BOT_NAME} is designed to be able to assist with a wide range of tasks, from answering simple questions to 
+        providing in-depth explanations and discussions on a wide range of topics of past and current events. As a 
+        language model, {BOT_NAME} is able to generate human-like text based on the input it receives, allowing it to 
+        engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at 
+        hand.
+        {BOT_NAME} is constantly learning and improving, and its capabilities are constantly evolving. It is able to 
+        process and understand large amounts of text, and can use this knowledge to provide accurate and informative 
+        responses to a wide range of questions. Additionally, {BOT_NAME} is able to generate its own text based on 
+        the input it receives, allowing it to engage in discussions and provide explanations and descriptions on a 
+        wide range of topics.
+        Overall, {BOT_NAME} is a powerful tool that can help with a wide range of tasks and provide valuable insights 
+        and information on a wide range of topics. Whether you need help with a specific question or just want to 
+        have a conversation about a particular topic, {BOT_NAME} is here to assist.
+
+        Rule 1: Answer the following questions as best as you can with the Observations presented to you. 
+        Rule 2: Never use information outside of the Observations presented to you. 
+        Rule 3: Never jump to conclusions unless the information for the final answer is explicitly presented to you in `
+        Observation.
+
+        If you cannot answer the question, determine which tool you need to provide the correct answer.
         You have access to the following tools:
-        
+
         {tools}
-        
+
+
+        History of relevant conversation to the current topic:
+
+        {{history}}
+
+        Recent conversaton: 
+
+        {{recent_history}}
+
         Use the following format:
-        
+
         Question: the input question you must answer
         Thought: you should always think about what to do
-        Action: the action to take, should be one of [{tool_names}]
-        Action Input: the input to the action
-        Observation: the result of the action
-        Thought: you should always think about what to do next. Use the Observation to gather extra information, but never use information outside of the Observation.
-        Action: the action to take, should be one of [{tool_names}]
+        Action: the action to take, should be one of [{tool_names}] Action Input: the input to the action Observation: the 
+        result of the action Thought: you should always think about what to do next. Use the Observation to gather extra 
+        information, but never use information outside of the Observation. Action: the action to take, should be one of [
+        {tool_names}]
         Action_input: the input to the action
         Observation: the result of the action
         ... (this Thought/Action/Action Input/Observation can repeat N times)
         Thought: I now know the final answer.
+
         Final Answer: the final answer to the original input question
-        
+
         Begin!
-        
-        Question: {{human_input}}
-        {{agent_scratchpad}}"""
+
+        Human: {{human_input}}
+        {BOT_NAME} AI response:
+        """
 
     elif template_type == "image":
         return """
@@ -135,7 +162,7 @@ def get_template(template_type: str, tools: list) -> str:
         Prompt for image:
         """
 
-    elif template_type == "calendar":
+    elif template_type == "calendarOLD":
         return """
         You're a bot and you need to put an event in a Calendar. Based on the User message try to extract the following data. Translate the data into english. If it's not available in the message, don't use it.
         Summary:

@@ -33,9 +33,11 @@ async def handle_telegram_webhook(req: Request):
         return {"message": "Telegram bot token is not configured. Please set the TELEGRAM_BOT_TOKEN environment variable."}
 
     data = await req.json()
+    print(data)
     chat_id = data['message']['chat']['id']
     text = data['message'].get('text', '')
     voice = data['message'].get('voice', None)
+    document = data['message'].get('document', None)
     print(text)
 
     if voice:
